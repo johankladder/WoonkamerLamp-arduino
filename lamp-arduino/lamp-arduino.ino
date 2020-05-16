@@ -1,39 +1,84 @@
 #include <SoftwareSerial.h>
+
 SoftwareSerial HM10(0, 1); 
 String command = "";
 int ledPin = 3;
+
+// Serial BT input data storage:
+const byte numChars = 32;
+char receivedChars[numChars];
+boolean newData = false;
 
 void setup()
 {
   Serial.begin(9600);
   Serial.println("HM10 serial started at 9600");
   HM10.begin(9600); // set HM10 serial at 9600 baud rate
+
+
   pinMode(ledPin, OUTPUT); // onboard LED
   digitalWrite(ledPin, LOW); // switch OFF LED
+
 }
 
 void loop()
 {
-  HM10.listen();  // listen the HM10 port
-  while (HM10.available() > 0) {   // if HM10 sends something then read
-    command = HM10.readString();
-    Serial.println(command);
-  }
+    HM10.listen();  // listen the HM10 port
+    
+    readData();
+    showData(); // Show data for debug purposes
+    processData();
 
-  String preCommand = command.substring(0,3);
-  
-  if (preCommand == "CML") { 
-      lightsState(command.charAt(3));
-  }
-  
-  if (preCommand == "CMB") {
-       lightsBlink(command.charAt(3));
-  }
+    newData = false; // Reset flag 
+}
 
-  if (preCommand == "CMD") {
-       String brightness = command.substring(3,6);
-       setBrightness(brightness);
-  }
+void readData() {
+    static byte ndx = 0;
+    char endMarker = '\n';
+    char rc;
+    
+    while (HM10.available() > 0 && newData == false) {
+        rc = HM10.read();
+
+        if (rc != endMarker) {
+            receivedChars[ndx] = rc;
+            ndx++;
+            if (ndx >= numChars) {
+                ndx = numChars - 1;
+            }
+        }
+        else {
+            receivedChars[ndx] = '\0'; // terminate the string
+            ndx = 0;
+            newData = true;
+        }
+    }
+}
+
+void showData() {
+    if (newData == true) {
+        Serial.println(receivedChars);
+    }
+}
+
+void processData() {
+    if (newData == true) {
+      String command = receivedChars; 
+      String preCommand = command.substring(0,3);
+  
+      if (preCommand == "CML") { 
+          lightsState(command.charAt(3));
+      }
+  
+      if (preCommand == "CMB") {
+           lightsBlink(command.charAt(3));
+      }
+
+      if (preCommand == "CMD") {
+           String brightness = command.substring(3,6);
+           setBrightness(brightness.toInt());
+      }
+   }
 }
 
 void lightsState(char value) {
@@ -65,6 +110,6 @@ void lightsBlink(char speedChar) {
   delay(1000 / intSpeed);
 }
 
-void setBrightness(String brightness) {
-  analogWrite(ledPin, brightness.toInt());
+void setBrightness(int brightness) {
+    analogWrite(ledPin, brightness);
 }
