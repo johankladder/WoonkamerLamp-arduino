@@ -3,7 +3,7 @@
 
 // Pin setup:
 SoftwareSerial HM10(0, 1); 
-#define NUM_LEDS 12
+#define NUM_LEDS 52
 #define DATA_PIN 3
 
 // Storage for the LED information - like color
@@ -11,7 +11,7 @@ CRGB leds[NUM_LEDS];
 
 // Maximum number of input chars. As otherwise
 // the Arduino reads max String length. This improves speed. 
-const byte numChars = 32; 
+const byte numChars = 12; 
 char receivedChars[numChars];
 boolean newData = false;
 
@@ -87,6 +87,13 @@ void processData() {
            String brightness = command.substring(3,6);
            setBrightness(brightness.toInt());
       }
+
+      if (preCommand == "CMC") {
+          String colorHex = command.substring(3, 9);
+          long color = strtol(colorHex.c_str(), NULL, 16);
+          setAllLedsColor(color);
+          FastLED.show();
+      }
    }
 }
 
@@ -110,10 +117,19 @@ void setAllLedsColor(CRGB color) {
     }
 }
 
+void setAllLedsColor(long colorHex) {
+    for (int led = 0; led < NUM_LEDS; led++) {
+        setLedColor(led, colorHex);
+    }
+}
+
 void setLedColor(int led, CRGB color) {
     leds[led] = color;
 }
 
+void setLedColor(int led, long color) {
+    leds[led] = color;
+}
 void lightsOff() {
     FastLED.clear();
     FastLED.show();
